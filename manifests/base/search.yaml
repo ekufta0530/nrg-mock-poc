@@ -1,0 +1,64 @@
+# Elasticsearch: the second in-cluster StatefulSet with a persistent volume (prod runs a cluster
+# of these; staging mirrors it at one node). Requests are inflated ~3x like everything else.
+# Heap is 1g, so the container really uses ~1.5-2Gi against a 4Gi request.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: search
+  labels: { app: elasticsearch, team: discovery }
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels: { app: elasticsearch }
+  template:
+    metadata:
+      labels: { app: elasticsearch, team: discovery }
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext: { fsGroup: 1000 }
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              preference:
+                matchExpressions:
+                  - { key: nrg.io/pool, operator: In, values: [memory] }
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+          env:
+            - { name: discovery.type, value: single-node }
+            - { name: xpack.security.enabled, value: "false" }
+            # AL2023 nodes may not set vm.max_map_count=262144; skip mmap so no privileged init container is needed.
+            - { name: node.store.allow_mmap, value: "false" }
+            - { name: ES_JAVA_OPTS, value: "-Xms1g -Xmx1g" }
+          ports:
+            - { name: http, containerPort: 9200 }
+            - { name: transport, containerPort: 9300 }
+          resources:
+            requests: { cpu: "1", memory: 4Gi }
+            limits: { memory: 4Gi }
+          readinessProbe:
+            httpGet: { path: "/_cluster/health?local=true", port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /usr/share/elasticsearch/data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources: { requests: { storage: 20Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: search
+spec:
+  clusterIP: None
+  selector: { app: elasticsearch }
+  ports: [{ name: http, port: 9200, targetPort: http }]

@@ -1,0 +1,58 @@
+# In-cluster Postgres on EBS gp3: stateful realism for the Spot / Live Migration conversation.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: db
+  labels: { app: postgres, team: platform }
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres, team: platform }
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext: { fsGroup: 999 }
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              preference:
+                matchExpressions:
+                  - { key: nrg.io/pool, operator: In, values: [memory] }
+      containers:
+        - name: postgres
+          image: public.ecr.aws/docker/library/postgres:16-alpine
+          env:
+            - { name: POSTGRES_DB, value: nrg }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            # Throwaway staging DB, ClusterIP-only, no real data: no Secret needs to live in Git.
+            - { name: POSTGRES_HOST_AUTH_METHOD, value: trust }
+          ports: [{ name: pg, containerPort: 5432 }]
+          resources:
+            requests: { cpu: "1", memory: 4Gi }
+            limits: { memory: 4Gi }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres"] }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources: { requests: { storage: 20Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: db
+spec:
+  clusterIP: None
+  selector: { app: postgres }
+  ports: [{ name: pg, port: 5432, targetPort: pg }]

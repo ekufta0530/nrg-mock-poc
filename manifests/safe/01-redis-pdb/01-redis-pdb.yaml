@@ -1,0 +1,10 @@
+# Trap 1 defused: Dana confirmed the cache is safe to restart.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: cache
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels: { app: redis }

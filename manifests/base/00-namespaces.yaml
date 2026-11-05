@@ -1,0 +1,42 @@
+# ingress-nginx is created by Terraform (helm_release.ingress_nginx).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: checkout
+  labels: { team: payments }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: routing
+  labels: { team: dispatch }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: notifications
+  labels: { team: comms }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cache
+  labels: { team: platform }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: label
+  labels: { team: fulfillment }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: db
+  labels: { team: platform }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+  labels: { team: discovery }

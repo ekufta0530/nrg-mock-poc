@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# What Argo CD syncs to nrg-stag-us-east-1. The trap switchboard is the lines tagged "# trap:<id>".
+# Flip a trap by pointing its line at ../../traps/<x> (armed) or ../../safe/<x> (defused), or use
+#   scripts/trap.sh <id> on|off [--push]
+# Trap 4 has no safe variant: "off" just means the line is commented out.
+resources:
+  - ../../base
+  - generated/notifications-config.yaml     # written by Terraform (KMS ciphertext)
+  - ../../traps/01-redis-pdb                # trap:1
+  - ../../traps/02-notifications-kms        # trap:2
+  - ../../traps/04-checkout-hpa             # trap:4
+  - ../../traps/05-routing-worker           # trap:5
+  - ../../safe/99-label-zone-spread          # trap:zone
+components:
+  - components/images                       # written by scripts/deploy.sh --build

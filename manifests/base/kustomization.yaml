@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Everything that is NOT a toggleable trap. The traps live in ../traps (armed) and ../safe (defused);
+# overlays/staging picks one variant of each.
+resources:
+  - 00-namespaces.yaml
+  - 01-storageclass.yaml
+  - cache.yaml
+  - checkout.yaml
+  - db.yaml
+  - label.yaml
+  - notifications.yaml
+  - routing.yaml
+  - search.yaml

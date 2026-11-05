@@ -1,0 +1,27 @@
+# Realism. Requests inflated like everything else. ClusterIP: no NLB to pay for in staging.
+# (Upstream ingress-nginx was retired in 2026; NRG "hasn't migrated yet", a fine discovery tangent.)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    targetRevision: 4.15.1
+    helm:
+      valuesObject:
+        controller:
+          replicaCount: 2
+          service: { type: ClusterIP }
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+          admissionWebhooks: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

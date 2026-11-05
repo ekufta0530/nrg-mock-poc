@@ -1,0 +1,25 @@
+# cp terraform.tfvars.example terraform.tfvars
+
+region       = "us-east-1"
+cluster_name = "nrg-stag-us-east-1"
+
+kubernetes_version = "1.35"
+
+# Account guard rail + optional named profile (null = default CLI credentials).
+allowed_account_ids = ["445567108000"]
+# aws_profile       = "nrg"
+
+# Lock the public API endpoint down if you can.
+api_allowed_cidrs = ["0.0.0.0/0"]
+
+# Facilitator + trainee roles that need kubectl access (the creator is added automatically).
+admin_principal_arns = [
+  # "arn:aws:iam::123456789012:role/AWSReservedSSO_AdministratorAccess_abc123",
+]
+
+# Trap 2 optional extra layer (unmapped role). Off by default.
+enable_trap2_unmapped_decoy = false
+
+tags = {
+  CostCenter = "se-onboarding"
+}

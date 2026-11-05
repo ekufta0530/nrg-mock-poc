@@ -1,0 +1,17 @@
+# TRAP 4 — CPU HPA at 50%. When WOOP lowers CPU requests, utilization % jumps and the HPA
+# scales out. Defuse: trap.sh 4 off (deletes the HPA). There is no "safe" HPA variant;
+# the right answer is a deliberate WOOP policy, not removing the HPA.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: checkout-api
+  namespace: checkout
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: checkout-api }
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 50 }

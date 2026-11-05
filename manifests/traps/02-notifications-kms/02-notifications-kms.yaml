@@ -1,0 +1,64 @@
+# TRAPS 2 + 3 — notifications decrypts its config with KMS using whatever credentials IMDS
+# hands out (i.e. the NODE role). Works on nrg-stag-ng-general nodes (nrg-stag-app-node-role,
+# hop limit 2). On CAST AI nodes:
+#   - hop limit 1 + IMDSv2-only          -> "Unable to locate credentials"     (trap 3)
+#   - CAST-generated instance profile    -> AccessDeniedException kms:Decrypt  (trap 2)
+# Both errors surface as Init:CrashLoopBackOff on fetch-config.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications
+  namespace: notifications
+  labels: { app: notifications, team: comms }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: notifications }
+  template:
+    metadata:
+      labels: { app: notifications, team: comms }
+    spec:
+      serviceAccountName: notifications
+      initContainers:
+        - name: fetch-config
+          image: public.ecr.aws/aws-cli/aws-cli:2.17.0   # same image as amazon/aws-cli:2.17.0
+          env:
+            - { name: AWS_REGION, value: us-east-1 }
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              plaintext=$(aws kms decrypt --key-id alias/nrg-stag-app \
+                --ciphertext-blob fileb:///cfg/config.enc --query Plaintext --output text)
+              echo "$plaintext" | base64 -d > /run/config/config.json
+              echo "config decrypted ($(wc -c < /run/config/config.json) bytes)"
+          volumeMounts:
+            - { name: cfg, mountPath: /cfg, readOnly: true }
+            - { name: config, mountPath: /run/config }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+      containers:
+        - name: notifications
+          image: nrg-worker
+          env:
+            - { name: MODE, value: http }
+            - { name: SERVICE_NAME, value: notifications }
+            - { name: REQUEST_CPU_MS, value: "5" }
+            - { name: BALLAST_MB, value: "96" }
+            - { name: CONFIG_FILE, value: /run/config/config.json }
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: config, mountPath: /run/config, readOnly: true }
+      volumes:
+        - name: cfg
+          configMap: { name: notifications-config }
+        - name: config
+          emptyDir: { medium: Memory, sizeLimit: 1Mi }

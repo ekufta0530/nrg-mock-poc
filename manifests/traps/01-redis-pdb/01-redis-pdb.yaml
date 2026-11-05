@@ -1,0 +1,11 @@
+# TRAP 1 — zero-disruption PDB on a single-replica Redis. Blocks drain during rebalance.
+# Fix (after asking Dana): manifests/safe/01-redis-pdb.yaml (maxUnavailable: 1).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: cache
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: redis }

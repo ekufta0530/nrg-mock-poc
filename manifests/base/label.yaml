@@ -1,0 +1,9 @@
+# Filler Service. The Deployment is toggled by the zone extra (traps/ or safe/ 99-label-zone-spread).
+apiVersion: v1
+kind: Service
+metadata:
+  name: label-renderer
+  namespace: label
+spec:
+  selector: { app: label-renderer }
+  ports: [{ name: http, port: 80, targetPort: http }]

@@ -1,0 +1,85 @@
+# checkout-api: ~30 rps x ~20ms CPU = ~0.6 cores total across 2 pods (~30% of the 1-core request).
+# The HPA lives in manifests/traps/04-checkout-hpa/ so trap 4 can be toggled.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: checkout
+  labels: { app: checkout-api, team: payments }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: checkout-api }
+  template:
+    metadata:
+      labels: { app: checkout-api, team: payments }
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: api
+          image: nrg-worker
+          env:
+            - { name: MODE, value: http }
+            - { name: SERVICE_NAME, value: checkout-api }
+            - { name: REQUEST_CPU_MS, value: "20" }
+            - { name: BALLAST_MB, value: "192" }
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: "1", memory: 1Gi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-api
+  namespace: checkout
+spec:
+  selector: { app: checkout-api }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: checkout-api
+  namespace: checkout
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: checkout.staging.nrg.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: checkout-api, port: { name: http } } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-loadgen
+  namespace: checkout
+  labels: { app: checkout-loadgen, team: payments }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: checkout-loadgen }
+  template:
+    metadata:
+      labels: { app: checkout-loadgen, team: payments }
+    spec:
+      containers:
+        - name: loadgen
+          image: nrg-loadgen
+          env:
+            - { name: MODE, value: http }
+            - { name: TARGET_URL, value: "http://checkout-api.checkout.svc.cluster.local/" }
+            - { name: RPS, value: "30" }
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { memory: 256Mi }

@@ -1,0 +1,5 @@
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/terraform.tfvars
+__pycache__/
+castctl-support-bundle-*.zip

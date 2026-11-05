@@ -1,0 +1,18 @@
+# Shared notifications objects. The Deployment is in manifests/traps/02-notifications-kms/
+# (or manifests/safe/). ConfigMap notifications-config (config.enc = KMS ciphertext) is
+# created by scripts/deploy.sh from the Terraform output.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notifications
+  namespace: notifications
+  # No eks.amazonaws.com/role-arn annotation: this service rides the node role.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications
+  namespace: notifications
+spec:
+  selector: { app: notifications }
+  ports: [{ name: http, port: 80, targetPort: http }]

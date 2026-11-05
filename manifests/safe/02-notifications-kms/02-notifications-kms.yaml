@@ -1,0 +1,33 @@
+# Traps 2 + 3 defused at the workload level: no runtime KMS dependency on the node role.
+# (The *recommended* customer fix is IRSA / EKS Pod Identity for the notifications SA;
+# this file just takes the dependency out of play for facilitators.)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications
+  namespace: notifications
+  labels: { app: notifications, team: comms }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: notifications }
+  template:
+    metadata:
+      labels: { app: notifications, team: comms }
+    spec:
+      serviceAccountName: notifications
+      containers:
+        - name: notifications
+          image: nrg-worker
+          env:
+            - { name: MODE, value: http }
+            - { name: SERVICE_NAME, value: notifications }
+            - { name: REQUEST_CPU_MS, value: "5" }
+            - { name: BALLAST_MB, value: "96" }
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5

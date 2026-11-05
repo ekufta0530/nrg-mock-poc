@@ -1,0 +1,38 @@
+# OPTIONAL EXTRA — zone mismatch. Strict 3-AZ spread on label-renderer; pair with a CAST AI
+# node configuration that lists subnets from only 2 AZs (castai/terraform: -var zone_two_subnets=true).
+# After the rebalance drains the node-group nodes, the third pod can't satisfy maxSkew -> Pending.
+# Defuse: trap.sh zone off (re-applies manifests/base/label.yaml) or fix the subnets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: label-renderer
+  namespace: label
+  labels: { app: label-renderer, team: fulfillment }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: label-renderer }
+  template:
+    metadata:
+      labels: { app: label-renderer, team: fulfillment }
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector: { matchLabels: { app: label-renderer } }
+      containers:
+        - name: renderer
+          image: nrg-worker
+          env:
+            - { name: MODE, value: http }
+            - { name: SERVICE_NAME, value: label-renderer }
+            - { name: REQUEST_CPU_MS, value: "40" }
+            - { name: BALLAST_MB, value: "128" }
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
