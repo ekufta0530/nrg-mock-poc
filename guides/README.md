@@ -9,5 +9,6 @@ There are deliberately no scripts for these steps. The environment tooling (`ter
 | [01-connect-with-castctl.md](01-connect-with-castctl.md) | Connect `nrg-stag-us-east-1` read-only, then enable automation | Nothing to run. Watch, answer questions as Dana. |
 | [02-node-configuration-traps.md](02-node-configuration-traps.md) | Find and fix traps 2 and 3 (and the zone extra) | `castai/terraform` arms them so you can see the node configuration |
 | [03-argo-handoff.md](03-argo-handoff.md) | (optional) Put Cast AI under Argo CD | Nothing to run. Use it as the answer key. |
+| [04-argo-for-helm-people.md](04-argo-for-helm-people.md) | (none: your own learning) | Helm-to-Argo translation, exercises to run on this cluster, customer questions |
 
 Each guide has the same shape: **goal → what good looks like → hint ladder (give these one at a time, only when he's stuck) → answer key → things I haven't verified.**

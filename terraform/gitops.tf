@@ -49,6 +49,8 @@ resource "local_file" "notifications_config" {
     metadata:
       name: notifications-config
       namespace: notifications
+    data:
+      AWS_REGION: ${var.region}
     binaryData:
       config.enc: ${aws_kms_ciphertext.notifications_config.ciphertext_blob}
   EOT

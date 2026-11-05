@@ -5,5 +5,7 @@ kind: ConfigMap
 metadata:
   name: notifications-config
   namespace: notifications
+data:
+  AWS_REGION: ap-northeast-2
 binaryData:
   config.enc: AQICAHjCegWsa5uwP92F+aaBSfzBtkcuA+g2Oox6FxPQkHe8OwGYLQDslCsE093k/g+glp+CAAABUTCCAU0GCSqGSIb3DQEHBqCCAT4wggE6AgEAMIIBMwYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAw3M2KTfVvi6zbv8QgCARCAggEEsMUPJKtOpK/A4kYl3ZEv3G9Xz8danz0WbXYygPVNzDP34XHSn0oYTgVGYPJr4Rkth2kdBQ3abdQ31fUZyxgrGYNsI8/GawOHQXLkdfP7+n7eDSJSxnycLad7Z07M3xEJu+0AgqCDGSe6iW3IEJF4EhSw83P36KGaotg9+FcKBIqNZVCSVxDEwb+EkbHsf/cnlI2SW63VV50YoYD9ZxqXG9RJMOtMEr6b+qGyrgyDUNZn6usPfQhpRCN3OlU3AzBxNkWkl8zgbsus00T6R3T98UmFTD3uQiBTnX/oLlIQlxqNQPf/ZUlK3CobutyGc8zlV/z4YDcvLMEslWi2P+KQI/LKyHY=
