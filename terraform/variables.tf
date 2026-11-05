@@ -48,19 +48,59 @@ variable "admin_principal_arns" {
 
 variable "node_pools" {
   description = <<-EOT
-    Self-managed node groups, mirroring nrg-prod-us-east-1's general (m5) / memory (r5) / burst (c5) pools
-    at staging scale. Defaults keep staging deliberately over-provisioned (the savings story).
+    Self-managed node groups. general / memory / burst mirror nrg-prod-us-east-1's pools at staging scale.
+    Defaults keep staging deliberately over-provisioned (the savings story).
+
+    Beyond those three:
+      - spot             a pool that makes sense: stateless, interruption-tolerant workloads (label-renderer).
+      - app-loadgen,     the sprawl anti-pattern, one tiny node group per app (checkout-loadgen,
+        app-producer,    routing-producer, redis-queue) with a dedicated label + taint. Each runs a single
+        app-queue        ~250m pod. This is what Chris is asked to consolidate.
+
+    Optional per pool: spot (mixed-instances policy, 100% Spot), instance_types (Spot overrides; the first
+    is also the launch template type), labels (extra node labels), taints (kubelet registration taints,
+    "key=value:Effect").
   EOT
   type = map(object({
-    instance_type = string
-    min_size      = number
-    max_size      = number
-    desired_size  = number
+    instance_type  = string
+    min_size       = number
+    max_size       = number
+    desired_size   = number
+    spot           = optional(bool, false)
+    instance_types = optional(list(string), [])
+    labels         = optional(map(string), {})
+    taints         = optional(list(string), [])
   }))
   default = {
     general = { instance_type = "m5.xlarge", min_size = 2, max_size = 4, desired_size = 3 }
     memory  = { instance_type = "r5.large", min_size = 1, max_size = 3, desired_size = 2 }
     burst   = { instance_type = "c5.xlarge", min_size = 1, max_size = 3, desired_size = 1 }
+
+    # Stateless label rendering tolerates interruption: 3 replicas, no local state, re-rendered on retry.
+    spot = {
+      instance_type  = "m5.xlarge"
+      instance_types = ["m5.xlarge", "m5a.xlarge", "m5n.xlarge", "m4.xlarge", "m5d.xlarge"]
+      spot           = true
+      min_size       = 1
+      max_size       = 4
+      desired_size   = 2
+      labels         = { "nrg.io/capacity-type" = "spot" }
+      taints         = ["nrg.io/capacity-type=spot:NoSchedule"]
+    }
+
+    # Sprawl: one node group per app, each hosting a single 250m pod.
+    app-loadgen = {
+      instance_type = "t3.medium", min_size = 1, max_size = 2, desired_size = 1
+      taints        = ["nrg.io/dedicated=checkout-loadgen:NoSchedule"]
+    }
+    app-producer = {
+      instance_type = "t3.medium", min_size = 1, max_size = 2, desired_size = 1
+      taints        = ["nrg.io/dedicated=routing-producer:NoSchedule"]
+    }
+    app-queue = {
+      instance_type = "t3.medium", min_size = 1, max_size = 2, desired_size = 1
+      taints        = ["nrg.io/dedicated=redis-queue:NoSchedule"]
+    }
   }
 }
 

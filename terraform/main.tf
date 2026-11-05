@@ -110,6 +110,17 @@ module "eks" {
       ami_type      = "AL2023_x86_64_STANDARD" # cgroup v2: trap 5 depends on it
       instance_type = cfg.instance_type
 
+      # Spot pool: 100% Spot via a mixed-instances policy (several similar-size types to ride out capacity dips).
+      use_mixed_instances_policy = cfg.spot
+      mixed_instances_policy = cfg.spot ? {
+        instances_distribution = {
+          on_demand_base_capacity                  = 0
+          on_demand_percentage_above_base_capacity = 0
+          spot_allocation_strategy                 = "price-capacity-optimized"
+        }
+        override = [for t in cfg.instance_types : { instance_type = t }]
+      } : null
+
       min_size     = cfg.min_size
       max_size     = cfg.max_size
       desired_size = cfg.desired_size
@@ -142,7 +153,8 @@ module "eks" {
         }
       }
 
-      # Node label (nodeadm) so the workloads' soft pool affinity has something to match.
+      # Node labels (and optional taints) via nodeadm: nrg.io/pool=<pool> plus any per-pool extras, so
+      # workloads can select their pool.
       cloudinit_post_nodeadm = [{
         content_type = "application/node.eks.aws"
         content      = <<-EOT
@@ -152,7 +164,8 @@ module "eks" {
           spec:
             kubelet:
               flags:
-                - --node-labels=nrg.io/pool=${pool}
+                - --node-labels=${join(",", [for k, v in merge({ "nrg.io/pool" = pool }, cfg.labels) : "${k}=${v}"])}
+                ${length(cfg.taints) > 0 ? "- --register-with-taints=${join(",", cfg.taints)}" : "# no taints"}
         EOT
       }]
 
